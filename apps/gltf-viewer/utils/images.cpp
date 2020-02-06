@@ -2,10 +2,8 @@
 
 #include <cassert>
 #include <glad/glad.h>
-<<<<<<< HEAD
-=======
+
 #include <iostream>
->>>>>>> 04158cb47fc2ca311557ab7bc8017f01f04e20b2
 
 void renderToImage(size_t width, size_t height, size_t numComponents,
     unsigned char *outPixels, std::function<void()> drawScene)

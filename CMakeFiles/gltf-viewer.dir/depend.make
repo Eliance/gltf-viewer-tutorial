@@ -13,6 +13,7 @@ CMakeFiles/gltf-viewer.dir/apps/gltf-viewer/ViewerApplication.cpp.o: apps/gltf-v
 CMakeFiles/gltf-viewer.dir/apps/gltf-viewer/ViewerApplication.cpp.o: apps/gltf-viewer/utils/gl_debug_output.hpp
 CMakeFiles/gltf-viewer.dir/apps/gltf-viewer/ViewerApplication.cpp.o: apps/gltf-viewer/utils/glfw.hpp
 CMakeFiles/gltf-viewer.dir/apps/gltf-viewer/ViewerApplication.cpp.o: apps/gltf-viewer/utils/gltf.hpp
+CMakeFiles/gltf-viewer.dir/apps/gltf-viewer/ViewerApplication.cpp.o: apps/gltf-viewer/utils/images.hpp
 CMakeFiles/gltf-viewer.dir/apps/gltf-viewer/ViewerApplication.cpp.o: apps/gltf-viewer/utils/shaders.hpp
 CMakeFiles/gltf-viewer.dir/apps/gltf-viewer/ViewerApplication.cpp.o: third-party/glad/include/KHR/khrplatform.h
 CMakeFiles/gltf-viewer.dir/apps/gltf-viewer/ViewerApplication.cpp.o: third-party/glad/include/glad/glad.h
@@ -811,6 +812,11 @@ CMakeFiles/gltf-viewer.dir/apps/gltf-viewer/utils/gltf.cpp.o: third-party/tinygl
 CMakeFiles/gltf-viewer.dir/apps/gltf-viewer/utils/gltf.cpp.o: third-party/tinygltf-bcf2ce586ee8bf2a2a816afa6bfe2f8692ba6ac2/include/stb_image.h
 CMakeFiles/gltf-viewer.dir/apps/gltf-viewer/utils/gltf.cpp.o: third-party/tinygltf-bcf2ce586ee8bf2a2a816afa6bfe2f8692ba6ac2/include/stb_image_write.h
 CMakeFiles/gltf-viewer.dir/apps/gltf-viewer/utils/gltf.cpp.o: third-party/tinygltf-bcf2ce586ee8bf2a2a816afa6bfe2f8692ba6ac2/include/tiny_gltf.h
+
+CMakeFiles/gltf-viewer.dir/apps/gltf-viewer/utils/images.cpp.o: apps/gltf-viewer/utils/images.cpp
+CMakeFiles/gltf-viewer.dir/apps/gltf-viewer/utils/images.cpp.o: apps/gltf-viewer/utils/images.hpp
+CMakeFiles/gltf-viewer.dir/apps/gltf-viewer/utils/images.cpp.o: third-party/glad/include/KHR/khrplatform.h
+CMakeFiles/gltf-viewer.dir/apps/gltf-viewer/utils/images.cpp.o: third-party/glad/include/glad/glad.h
 
 CMakeFiles/gltf-viewer.dir/third-party/imgui-1.74/examples/imgui_impl_glfw.cpp.o: third-party/imgui-1.74/examples/imgui_impl_glfw.cpp
 CMakeFiles/gltf-viewer.dir/third-party/imgui-1.74/examples/imgui_impl_glfw.cpp.o: third-party/imgui-1.74/examples/imgui_impl_glfw.h

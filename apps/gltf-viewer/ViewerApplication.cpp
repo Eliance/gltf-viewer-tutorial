@@ -7,6 +7,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/io.hpp>
+#include <glm/glm.hpp>
 
 #include "utils/cameras.hpp"
 #include "utils/gltf.hpp"
@@ -19,6 +20,8 @@
 #define VERTEX_ATTRIB_NORMAL_IDX  1
 #define VERTEX_ATTRIB_TEXCOORD0_IDX  2
 
+#define ZERO 0.01f
+
 void keyCallback(
     GLFWwindow *window, int key, int scancode, int action, int mods)
 {
@@ -29,11 +32,71 @@ void keyCallback(
 
 int ViewerApplication::run()
 {
+	//////////////////////////////////////////////////
+	/// loading the scene
+	//////////////////////////////////////////////////
+	tinygltf::Model model;
+	if (!loadGltfFile(model)){
+		return -1;
+	}
+
+	//////////////////////////////////////////////////
+	/// computing bounding box of the scene & camera vectors
+	//////////////////////////////////////////////////
+	glm::vec3 bboxMin;
+	glm::vec3 bboxMax;
+	computeSceneBounds(model, bboxMin, bboxMax);
+
+	glm::vec3 center = glm::vec3((bboxMin.x+bboxMax.x)/2, (bboxMin.y+bboxMax.y)/2, (bboxMin.z+bboxMax.z)/2);
+	glm::vec3 diag = glm::vec3(bboxMax.x-bboxMin.x, bboxMax.y-bboxMin.y, bboxMax.z-bboxMin.z);
+	glm::vec3 eye; 
+	//if a scene is flat:
+	if ((bboxMax.z - bboxMin.z) < ZERO){
+		eye = center + 2.f * glm::cross(diag, glm::vec3(0, 1, 0));
+	} else {
+		eye = center + diag;
+	}
+
+	float maxDistance = glm::length2(diag);
+	maxDistance = maxDistance > ZERO ? maxDistance : 100.f;
+
+
+	//////////////////////////////////////////////////
+	/// camera Controller
+	//////////////////////////////////////////////////
+	
+	std::unique_ptr<CameraController> cameraController = std::make_unique<TrackballCameraController>(m_GLFWHandle.window(), 0.5f * maxDistance);
+
+	if (m_hasUserCamera) {
+		cameraController->setCamera(m_userCamera);
+	} else {
+		const auto center = 0.5f * (bboxMax + bboxMin);
+		const auto up = glm::vec3(0, 1, 0);
+		const auto eye =
+			diag.z > 0 ? center + diag : center + 2.f * glm::cross(diag, up);
+		cameraController->setCamera(Camera{eye, center, up});
+	}
+	// TODO Implement a new CameraController model and use it instead. Propose the
+	// choice from the GUI
+	
+
+	//////////////////////////////////////////////////
 	// Loader shaders
+	//////////////////////////////////////////////////
 	const auto glslProgram =
 		compileProgram({m_ShadersRootPath / m_AppName / m_vertexShader,
 			m_ShadersRootPath / m_AppName / m_fragmentShader});
 
+
+	//////////////////////////////////////////////////
+	// compute matrix
+	//////////////////////////////////////////////////
+
+	const auto bufferObjects = createBufferObjects(model);
+	std::vector<VaoRange> meshIndexToVaoRange;
+	std::vector<GLuint> VAOs = createVertexArrayObjects(model, bufferObjects, meshIndexToVaoRange);
+
+	
 	const auto modelViewProjMatrixLocation =
 		glGetUniformLocation(glslProgram.glId(), "uModelViewProjMatrix");
 	const auto modelViewMatrixLocation =
@@ -41,54 +104,12 @@ int ViewerApplication::run()
 	const auto normalMatrixLocation =
 		glGetUniformLocation(glslProgram.glId(), "uNormalMatrix");
 
-	// Build projection matrix
-	auto maxDistance = 500.f; // TODO use scene bounds instead to compute this
-	maxDistance = maxDistance > 0.f ? maxDistance : 100.f;
+	
 	const auto projMatrix =
 		glm::perspective(70.f, float(m_nWindowWidth) / m_nWindowHeight,
 			0.001f * maxDistance, 1.5f * maxDistance);
 
-	// TODO Implement a new CameraController model and use it instead. Propose the
-	// choice from the GUI
-	FirstPersonCameraController cameraController{
-		m_GLFWHandle.window(), 0.5f * maxDistance};
-	if (m_hasUserCamera) {
-		cameraController.setCamera(m_userCamera);
-	} else {
-		// TODO Use scene bounds to compute a better default camera
-		cameraController.setCamera(
-			Camera{glm::vec3(0, 0, 0), glm::vec3(0, 0, -1), glm::vec3(0, 1, 0)});
-	}
-
-	//loading the scene
-	tinygltf::Model model;
-	if (!loadGltfFile(model)){
-		return -1;
-	}
-
-	const auto bufferObjects = createBufferObjects(model);
-	std::vector<VaoRange> meshIndexToVaoRange;
-	std::vector<GLuint> VAOs = createVertexArrayObjects(model, bufferObjects, meshIndexToVaoRange);
-
-	//computing bounding box of the scene
-	glm::vec3 bboxMin;
-	glm::vec3 bboxMax;
-	computeSceneBounds(model, bboxMin, bboxMax);
-	glm::vec3 center = glm::vec3((bboxMin.x+bboxMax.x)/2, (bboxMin.y+bboxMax.y)/2, (bboxMin.z+bboxMax.z)/2);
-	glm::vec3 diag = glm::vec3(bboxMax.x-bboxMin.x, bboxMax.y-bboxMin.y, bboxMax.z-bboxMin.z);
-	glm::vec3 eye; 
-	//if a scene is flat:
-	if ((bboxMax.z - bboxMin.z) < 0.1){
-		eye = center + 2.f * glm::cross(diag, glm::vec3(0, 1, 0));
-	} else {
-		eye = center + diag;
-	}
-	cameraController.setCamera(Camera{eye, center, glm::vec3(0, 1, 0)});
-	/*float maxDistance = glm::gtx::norm::length2(diag);
-	if (maxDistance < 100){
-		maxDistance = 100;
-	}*/
-
+	
 	// Setup OpenGL state for rendering
 	glEnable(GL_DEPTH_TEST);
 	glslProgram.use();
@@ -149,7 +170,7 @@ int ViewerApplication::run()
 
 	if (!m_OutputPath.empty()){
 		std::vector<unsigned char> pixels(m_nWindowWidth*m_nWindowHeight*3, 0);
-		renderToImage(m_nWindowWidth, m_nWindowHeight, 3, pixels.data(), [&]() {drawScene(cameraController.getCamera());});
+		renderToImage(m_nWindowWidth, m_nWindowHeight, 3, pixels.data(), [&]() {drawScene(cameraController->getCamera());});
 		flipImageYAxis(m_nWindowWidth, m_nWindowHeight, 3, pixels.data());
 		const auto strPath = m_OutputPath.string();
 		stbi_write_png(strPath.c_str(), m_nWindowWidth, m_nWindowHeight, 3, pixels.data(), 0);
@@ -161,7 +182,7 @@ int ViewerApplication::run()
 		++iterationCount) {
 		const auto seconds = glfwGetTime();
 
-		const auto camera = cameraController.getCamera();
+		const auto camera = cameraController->getCamera();
 		drawScene(camera);
 
 		// GUI code:
@@ -193,7 +214,24 @@ int ViewerApplication::run()
 			const auto str = ss.str();
 			glfwSetClipboardString(m_GLFWHandle.window(), str.c_str());
 			}
+			static int cameraControllerType = 0;
+			const auto cameraControllerTypeChanged =
+				ImGui::RadioButton("Trackball", &cameraControllerType, 0) ||
+				ImGui::RadioButton("First Person", &cameraControllerType, 1);
+			if (cameraControllerTypeChanged) {
+			const auto currentCamera = cameraController->getCamera();
+			if (cameraControllerType == 0) {
+				cameraController = std::make_unique<TrackballCameraController>(
+					m_GLFWHandle.window(), 0.5f * maxDistance);
+			} else {
+				cameraController = std::make_unique<FirstPersonCameraController>(
+					m_GLFWHandle.window(), 0.5f * maxDistance);
+			}
+			cameraController->setCamera(currentCamera);
+			}
 		}
+
+		
 		ImGui::End();
 		}
 
@@ -205,7 +243,7 @@ int ViewerApplication::run()
 		auto guiHasFocus =
 			ImGui::GetIO().WantCaptureMouse || ImGui::GetIO().WantCaptureKeyboard;
 		if (!guiHasFocus) {
-		cameraController.update(float(ellapsedTime));
+		cameraController->update(float(ellapsedTime));
 		}
 
 		m_GLFWHandle.swapBuffers(); // Swap front and back buffers
